@@ -90,7 +90,7 @@ try {
 }
 
 export default function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(undefined);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [logs, setLogs] = useState([]);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -1680,26 +1680,23 @@ export default function App() {
 
         {/* History Breakdown */}
         <div className="space-y-4">
-          <h3 className="text-xs font-bold text-text-secondary uppercase tracking-[0.2em] px-2 mb-2">RIWAYAT AKTIVITAS {selectedHistoryDate && `(${selectedHistoryDate})`}</h3>
-          {logs.filter(l => !selectedHistoryDate || l.date === selectedHistoryDate).length === 0 ? (
+          <h3 className="text-xs font-bold text-text-secondary uppercase tracking-[0.2em] px-2 mb-2">
+            RIWAYAT AKTIVITAS ({selectedHistoryDate || dateString})
+          </h3>
+          {logs.filter(l => l.date === (selectedHistoryDate || dateString)).length === 0 ? (
             <div className="text-center py-20 glass-card rounded-2xl border border-[var(--color-glass-border)]">
               <p className="text-sm text-text-secondary font-medium">Belum ada riwayat tercatat untuk tanggal ini.</p>
-              {selectedHistoryDate && (
-                <button onClick={() => setSelectedHistoryDate(null)} className="mt-4 text-[10px] font-bold text-primary uppercase tracking-widest bg-primary/10 px-4 py-2 rounded-xl hover:bg-primary/20 transition-all">
-                  Lihat Semua Riwayat
-                </button>
-              )}
             </div>
           ) : (
             <div className="space-y-4 animate-fade-in">
               {selectedHistoryDate && (
                 <div className="flex justify-end px-2">
                   <button onClick={() => setSelectedHistoryDate(null)} className="text-[10px] font-bold text-primary uppercase tracking-widest bg-primary/10 px-3 py-1.5 rounded-xl hover:bg-primary/20 transition-all">
-                    Reset Filter
+                    Reset Filter Kalender
                   </button>
                 </div>
               )}
-              {logs.filter(l => !selectedHistoryDate || l.date === selectedHistoryDate).map((log) => {
+              {logs.filter(l => l.date === (selectedHistoryDate || dateString)).map((log) => {
                 const targetVal = calculateTargetCalories(log.weight || profile.startWeight, profile.height, profile.age);
                 const isUnderCal = log.totalCalories > 0 && log.totalCalories <= targetVal;
                 return (
