@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>it-fittracker</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    <script>
+      // Replace these values with your actual Firebase project configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyBhFpmxmbvGru7j8ZxtKc1v73ZtjbZl_D8",
+        authDomain: "tracker-303d2.firebaseapp.com",
+        projectId: "tracker-303d2",
+        storageBucket: "tracker-303d2.firebasestorage.app",
+        messagingSenderId: "1070100379806",
+        appId: "1:1070100379806:web:7685b02e8b984c66d5a38f"
+      };
+      
+      window.__firebase_config = JSON.stringify(firebaseConfig);
+      window.__app_id = firebaseConfig.appId;
+    </script>
+  </body>
+</html>
