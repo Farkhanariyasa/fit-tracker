@@ -133,7 +133,8 @@ export default function App() {
     workoutCompleted: false,
     bikeDuration: '',
     dumbellSets: {},
-    notes: ''
+    notes: '',
+    additionalWorkouts: []
   });
   
   const [isSaving, setIsSaving] = useState(false);
@@ -179,7 +180,8 @@ export default function App() {
           workoutCompleted: todayData.workoutCompleted || false,
           bikeDuration: todayData.bikeDuration || '',
           dumbellSets: todayData.dumbellSets || {},
-          notes: todayData.notes || ''
+          notes: todayData.notes || '',
+          additionalWorkouts: todayData.additionalWorkouts || []
         });
         setIsInitialized(true);
       } else if (!todayData) {
@@ -371,7 +373,7 @@ export default function App() {
       
       // 2. Clear Today's Log
       const todayRef = doc(db, 'artifacts', appId, 'users', user.uid, 'dailyLogs', dateString);
-      await setDoc(todayRef, { weight: '', foods: [], totalCalories: 0, budgetSpent: 0, workoutCompleted: false });
+      await setDoc(todayRef, { weight: '', foods: [], totalCalories: 0, budgetSpent: 0, workoutCompleted: false, additionalWorkouts: [] });
 
       setModal({
         isOpen: true,
@@ -508,6 +510,10 @@ export default function App() {
     const hMalam = log.foods?.some(f => f.category === 'Makan Malam');
     const wCount = [hSarapan, hSiang, hMalam].filter(Boolean).length;
     if (wCount === 3) xp += 20;
+
+    if (log.additionalWorkouts && log.additionalWorkouts.length > 0) {
+      xp += (log.additionalWorkouts.length * 15);
+    }
   });
 
   // 2. Process Today's Progress (Actions-only)
@@ -525,8 +531,28 @@ export default function App() {
   const windowCount = [hasSarapan, hasSiang, hasMalam].filter(Boolean).length;
   if (windowCount === 3) xp += 20;
 
-  const currentLevel = Math.floor(xp / 100) + 1;
-  const xpProgress = xp % 100;
+  if (todayLog.additionalWorkouts && todayLog.additionalWorkouts.length > 0) {
+    xp += (todayLog.additionalWorkouts.length * 15);
+  }
+
+  const xpThresholds = [0, 100, 250, 450, 750, 1150, 1650, 2450];
+  let currentLevel = 1;
+  let nextThreshold = 100;
+  let currentLevelBase = 0;
+  
+  for (let i = 0; i < xpThresholds.length; i++) {
+    if (xp >= xpThresholds[i]) {
+      currentLevel = i + 1;
+      currentLevelBase = xpThresholds[i];
+      nextThreshold = xpThresholds[i + 1] || Infinity;
+    }
+  }
+
+  const isMaxLevel = nextThreshold === Infinity;
+  const levelMax = isMaxLevel ? 1 : nextThreshold - currentLevelBase;
+  const currentLevelProgress = isMaxLevel ? 1 : xp - currentLevelBase;
+  const xpProgressPercent = isMaxLevel ? 100 : (currentLevelProgress / levelMax) * 100;
+
   const titles = ["Fitness Rookie", "Sweat Warrior", "Consistent King", "Habit Master", "Fitness God", "FitTracker Legend", "Mountain Titan", "Apex Athlete"];
   const rankTitle = titles[Math.min(currentLevel - 1, titles.length - 1)];
 
@@ -577,11 +603,11 @@ export default function App() {
             <p className="flex items-center text-xs font-bold text-text-secondary uppercase tracking-wider">
               <span className="mr-1"><IconStar /></span> Level {currentLevel}
             </p>
-            <p className="text-xs font-bold text-primary uppercase">{xp % 100} / 100 XP</p>
+            <p className="text-xs font-bold text-primary uppercase">{isMaxLevel ? 'MAX LEVEL' : `${currentLevelProgress} / ${levelMax} XP`}</p>
           </div>
           <h2 className="text-xl font-bold tracking-tight leading-tight">{rankTitle}</h2>
           <div className="w-full bg-glass-border h-2.5 rounded-full mt-3 overflow-hidden shadow-inner">
-            <div className="bg-primary h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${xpProgress}%` }}></div>
+            <div className="bg-primary h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${xpProgressPercent}%` }}></div>
           </div>
         </div>
       </div>
@@ -797,16 +823,17 @@ export default function App() {
         <div className="flex flex-col space-y-4 px-1">
           <h2 className="text-2xl font-bold text-text-main tracking-tight">Pengaturan</h2>
           
-          <div className="flex bg-bg-paper p-1 rounded-2xl border border-[var(--color-glass-border)] shadow-sm">
+          <div className="flex bg-bg-paper p-1 rounded-2xl border border-[var(--color-glass-border)] shadow-sm overflow-x-auto scrollbar-hide">
             {[
               { id: 'profil', label: 'Profil' },
               { id: 'aktivitas', label: 'Aktivitas' },
-              { id: 'database', label: 'Database' }
+              { id: 'database', label: 'Database' },
+              { id: 'panduan', label: 'Panduan' }
             ].map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setSettingsTab(tab.id)}
-                className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${settingsTab === tab.id ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-text-secondary font-bold'}`}
+                className={`flex-1 min-w-[70px] px-1 py-3 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all ${settingsTab === tab.id ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-text-secondary font-bold'}`}
               >
                 {tab.label}
               </button>
@@ -1027,6 +1054,68 @@ export default function App() {
                   <IconGuide />
                   <span className="ml-2">Sign Out</span>
                </button>
+            </div>
+          </div>
+        )}
+
+        {settingsTab === 'panduan' && (
+          <div className="glass-card rounded-2xl p-6 shadow-sm space-y-6">
+            <h3 className="text-xl font-bold text-text-main tracking-tight">Tentang FitTracker</h3>
+            <p className="text-sm text-text-secondary leading-relaxed font-medium">FitTracker adalah asisten perjalanan kesehatan Anda yang dirancang untuk memantau kalori, berat badan, serta aktivitas harian, dengan pendekatan gamifikasi.</p>
+
+            <div className="space-y-4 pt-4 border-t border-[var(--color-glass-border)]">
+               <h4 className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em]">Sistem Level & XP</h4>
+               
+               <div className="space-y-3">
+                 <div className="p-4 bg-bg-paper/50 rounded-2xl border border-[var(--color-glass-border)] shadow-sm">
+                    <p className="text-xs font-bold text-text-main mb-3">Cara Mendapatkan XP:</p>
+                    <ul className="text-[10px] text-text-secondary font-bold space-y-2 list-none">
+                       <li className="flex justify-between items-center"><span className="flex items-center"><span className="text-success mr-2">✓</span>Catat BB Harian</span> <span className="text-success bg-success/10 px-2 py-0.5 rounded">+10 XP</span></li>
+                       <li className="flex justify-between items-center"><span className="flex items-center"><span className="text-success mr-2">✓</span>Target Kalori Tercapai</span> <span className="text-success bg-success/10 px-2 py-0.5 rounded">+20 XP</span></li>
+                       <li className="flex justify-between items-center"><span className="flex items-center"><span className="text-success mr-2">✓</span>Jendela Makan Lengkap (3x)</span> <span className="text-success bg-success/10 px-2 py-0.5 rounded">+20 XP</span></li>
+                       <li className="flex justify-between items-center"><span className="flex items-center"><span className="text-success mr-2">✓</span>Latihan Utama Selesai</span> <span className="text-success bg-success/10 px-2 py-0.5 rounded">+50 XP</span></li>
+                       <li className="flex justify-between items-center"><span className="flex items-center"><span className="text-success mr-2">✓</span>Latihan Tambahan Selesai</span> <span className="text-success bg-success/10 px-2 py-0.5 rounded">+15 XP / Latihan</span></li>
+                    </ul>
+                 </div>
+
+                 <div className="p-4 bg-bg-paper/50 rounded-2xl border border-[var(--color-glass-border)] shadow-sm">
+                    <p className="text-xs font-bold text-text-main mb-3">Jenjang Gelar (Rank):</p>
+                    <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-text-secondary">
+                       <div className="py-2 px-1 border border-[var(--color-glass-border)] rounded-lg flex flex-col items-center justify-center text-center">
+                         <span className="text-text-main">Lv 1: Fitness Rookie</span>
+                         <span className="text-[8px] font-black uppercase tracking-widest text-primary/70 mt-0.5">0 - 99 XP</span>
+                       </div>
+                       <div className="py-2 px-1 border border-[var(--color-glass-border)] rounded-lg flex flex-col items-center justify-center text-center">
+                         <span className="text-text-main">Lv 2: Sweat Warrior</span>
+                         <span className="text-[8px] font-black uppercase tracking-widest text-primary/70 mt-0.5">100 - 249 XP</span>
+                       </div>
+                       <div className="py-2 px-1 border border-[var(--color-glass-border)] rounded-lg flex flex-col items-center justify-center text-center">
+                         <span className="text-text-main">Lv 3: Consistent King</span>
+                         <span className="text-[8px] font-black uppercase tracking-widest text-primary/70 mt-0.5">250 - 449 XP</span>
+                       </div>
+                       <div className="py-2 px-1 border border-[var(--color-glass-border)] rounded-lg flex flex-col items-center justify-center text-center">
+                         <span className="text-text-main">Lv 4: Habit Master</span>
+                         <span className="text-[8px] font-black uppercase tracking-widest text-primary/70 mt-0.5">450 - 749 XP</span>
+                       </div>
+                       <div className="py-2 px-1 border border-[var(--color-glass-border)] rounded-lg flex flex-col items-center justify-center text-center">
+                         <span className="text-text-main">Lv 5: Fitness God</span>
+                         <span className="text-[8px] font-black uppercase tracking-widest text-primary/70 mt-0.5">750 - 1149 XP</span>
+                       </div>
+                       <div className="py-2 px-1 border border-[var(--color-glass-border)] rounded-lg flex flex-col items-center justify-center text-center">
+                         <span className="text-text-main">Lv 6: FitTracker Legend</span>
+                         <span className="text-[8px] font-black uppercase tracking-widest text-primary/70 mt-0.5">1150 - 1649 XP</span>
+                       </div>
+                       <div className="py-2 px-1 border border-[var(--color-glass-border)] rounded-lg flex flex-col items-center justify-center text-center">
+                         <span className="text-text-main">Lv 7: Mountain Titan</span>
+                         <span className="text-[8px] font-black uppercase tracking-widest text-primary/70 mt-0.5">1650 - 2449 XP</span>
+                       </div>
+                       <div className="py-2 px-1 border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/5 rounded-lg flex flex-col items-center justify-center text-center">
+                         <span className="text-[var(--color-primary)] font-black">Lv 8+: Apex Athlete</span>
+                         <span className="text-[8px] font-black uppercase tracking-widest text-[var(--color-primary)] mt-0.5">2450+ XP</span>
+                       </div>
+                    </div>
+                 </div>
+               </div>
             </div>
           </div>
         )}
@@ -1369,6 +1458,78 @@ export default function App() {
           </button>
         </>
       )}
+
+      {/* Additional Workouts Section */}
+      <div className="mt-8 border-t border-[var(--color-glass-border)] pt-8">
+        <h3 className="text-xs font-bold text-text-secondary uppercase tracking-[0.2em] mb-4">Aktivitas Tambahan Hari Ini</h3>
+        
+        {todayLog.additionalWorkouts && todayLog.additionalWorkouts.length > 0 && (
+          <div className="space-y-3 mb-6">
+            {todayLog.additionalWorkouts.map((aw, idx) => (
+              <div key={idx} className="flex justify-between items-center bg-bg-paper p-4 rounded-2xl border border-[var(--color-glass-border)] shadow-sm">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-primary/10 text-primary rounded-xl">
+                    {getIconForWorkout(aw.name)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-text-main">{aw.name}</p>
+                    {aw.duration && <p className="text-[10px] text-text-secondary font-bold">{aw.duration} Menit</p>}
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    const newAw = [...todayLog.additionalWorkouts];
+                    newAw.splice(idx, 1);
+                    setTodayLog({...todayLog, additionalWorkouts: newAw});
+                  }}
+                  className="text-danger p-2 bg-danger/10 rounded-xl"
+                >
+                  <IconTrash />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="glass-card rounded-2xl p-6 shadow-sm border border-[var(--color-glass-border)]">
+          <div className="flex flex-col space-y-4">
+            <select 
+              className="h-14 bg-bg-paper/50 rounded-xl px-4 text-sm font-bold text-text-main border-transparent outline-none focus:ring-2 focus:ring-primary/20"
+              value={newActivity}
+              onChange={(e) => setNewActivity(e.target.value)}
+            >
+              <option value="">-- Pilih Aktivitas --</option>
+              {workoutOptions.filter(o => o.name !== todaySchedule.workout).map((opt, i) => (
+                 <option key={i} value={opt.name}>{opt.name}</option>
+              ))}
+            </select>
+            {newActivity && (
+              <input 
+                type="number"
+                placeholder="Durasi (Menit)"
+                className="h-14 bg-bg-paper/50 rounded-xl px-4 text-sm font-bold text-text-main border-transparent outline-none focus:ring-2 focus:ring-primary/20"
+                id="newActivityDuration"
+              />
+            )}
+            <button 
+              onClick={() => {
+                if(!newActivity) return;
+                const durInput = document.getElementById('newActivityDuration');
+                const dur = durInput ? durInput.value : '';
+                setTodayLog({
+                  ...todayLog, 
+                  additionalWorkouts: [...(todayLog.additionalWorkouts || []), { name: newActivity, duration: dur, addedAt: Date.now() }]
+                });
+                setNewActivity('');
+                if(durInput) durInput.value = '';
+              }}
+              className="btn-primary h-14 text-xs font-bold uppercase tracking-widest transition-all active:scale-95"
+            >
+              + TAMBAH AKTIVITAS LAIN
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
     );
   };
