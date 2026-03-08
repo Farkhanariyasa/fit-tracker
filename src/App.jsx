@@ -1438,7 +1438,7 @@ export default function App() {
           </div>
 
           <div className="grid grid-cols-7 gap-1 text-center mb-4">
-            {['S', 'S', 'R', 'K', 'J', 'S', 'M'].map((d, i) => (
+            {['M', 'S', 'S', 'R', 'K', 'J', 'S'].map((d, i) => (
               <div key={i} className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{d}</div>
             ))}
           </div>
