@@ -147,6 +147,7 @@ export default function App() {
   const [quickAddMenu, setQuickAddMenu] = useState(FOOD_DB);
   const [tempSet, setTempSet] = useState({});
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedHistoryDate, setSelectedHistoryDate] = useState(null);
 
   const today = new Date();
   const dayIndex = today.getDay();
@@ -1452,10 +1453,6 @@ export default function App() {
             </div>
           </button>
 
-          <button onClick={triggerSaveXP} className="w-full btn-primary h-14 text-sm font-bold active:scale-95 uppercase tracking-widest mt-2 flex items-center justify-center space-x-3 shadow-lg shadow-primary/20">
-            <IconStar />
-            <span>KLAIM XP & SIMPAN WORKOUT</span>
-          </button>
         </>
       )}
 
@@ -1529,6 +1526,11 @@ export default function App() {
             </button>
           </div>
         </div>
+
+        <button onClick={triggerSaveXP} className="w-full btn-primary h-14 text-sm font-bold active:scale-95 uppercase tracking-widest mt-6 flex items-center justify-center space-x-3 shadow-lg shadow-primary/20">
+          <IconStar />
+          <span>KLAIM XP & SIMPAN LOG OLAH RAGA</span>
+        </button>
       </div>
     </div>
     );
@@ -1635,12 +1637,20 @@ export default function App() {
                 }
               }
 
+              const isSelected = selectedHistoryDate === dateStr;
+              if (isSelected) {
+                cellClasses += "ring-2 ring-[var(--color-secondary)] ring-offset-2 ";
+              }
+
               return (
                 <div key={day} className="flex items-center justify-center p-1">
-                  <div className={cellClasses}>
+                  <div 
+                    onClick={() => setSelectedHistoryDate(isSelected ? null : dateStr)}
+                    className={cellClasses + " cursor-pointer hover:scale-110 active:scale-95"}
+                  >
                     {day}
                     {log && log.totalCalories > 0 && (
-                      <div className={`absolute -bottom-1 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm ${log.totalCalories > calculateTargetCalories(log.weight || profile.startWeight, profile.height, profile.age) ? 'bg-[var(--color-danger)]' : 'bg-[var(--color-success)]'}`}></div>
+                      <div className={`absolute -bottom-1 w-2.5 h-2.5 rounded-full border-2 border-[var(--color-bg-paper)] shadow-sm ${log.totalCalories > calculateTargetCalories(log.weight || profile.startWeight, profile.height, profile.age) ? 'bg-[var(--color-danger)]' : 'bg-[var(--color-success)]'}`}></div>
                     )}
                   </div>
                 </div>
@@ -1670,14 +1680,26 @@ export default function App() {
 
         {/* History Breakdown */}
         <div className="space-y-4">
-          <h3 className="text-xs font-bold text-text-secondary uppercase tracking-[0.2em] px-2 mb-2">RIWAYAT AKTIVITAS</h3>
-          {logs.length === 0 ? (
-            <div className="text-center py-20 glass-card rounded-2xl">
-              <p className="text-sm text-text-secondary font-medium">Belum ada riwayat tercatat.</p>
+          <h3 className="text-xs font-bold text-text-secondary uppercase tracking-[0.2em] px-2 mb-2">RIWAYAT AKTIVITAS {selectedHistoryDate && `(${selectedHistoryDate})`}</h3>
+          {logs.filter(l => !selectedHistoryDate || l.date === selectedHistoryDate).length === 0 ? (
+            <div className="text-center py-20 glass-card rounded-2xl border border-[var(--color-glass-border)]">
+              <p className="text-sm text-text-secondary font-medium">Belum ada riwayat tercatat untuk tanggal ini.</p>
+              {selectedHistoryDate && (
+                <button onClick={() => setSelectedHistoryDate(null)} className="mt-4 text-[10px] font-bold text-primary uppercase tracking-widest bg-primary/10 px-4 py-2 rounded-xl hover:bg-primary/20 transition-all">
+                  Lihat Semua Riwayat
+                </button>
+              )}
             </div>
           ) : (
-            <div className="space-y-4">
-              {logs.map((log) => {
+            <div className="space-y-4 animate-fade-in">
+              {selectedHistoryDate && (
+                <div className="flex justify-end px-2">
+                  <button onClick={() => setSelectedHistoryDate(null)} className="text-[10px] font-bold text-primary uppercase tracking-widest bg-primary/10 px-3 py-1.5 rounded-xl hover:bg-primary/20 transition-all">
+                    Reset Filter
+                  </button>
+                </div>
+              )}
+              {logs.filter(l => !selectedHistoryDate || l.date === selectedHistoryDate).map((log) => {
                 const targetVal = calculateTargetCalories(log.weight || profile.startWeight, profile.height, profile.age);
                 const isUnderCal = log.totalCalories > 0 && log.totalCalories <= targetVal;
                 return (
@@ -1730,6 +1752,22 @@ export default function App() {
                         {log.scheduleWorkout || 'No Workout'}
                       </div>
                     </div>
+
+                    {log.additionalWorkouts && log.additionalWorkouts.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-[var(--color-glass-border)]">
+                        <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest mb-3">Aktivitas Tambahan</p>
+                        <div className="flex flex-wrap gap-2">
+                          {log.additionalWorkouts.map((aw, idx) => (
+                            <div key={idx} className="flex items-center space-x-2 bg-primary/5 px-3 py-2 rounded-xl border border-primary/10">
+                              <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                                <div style={{ transform: 'scale(0.7)' }}>{getIconForWorkout(aw.name)}</div>
+                              </div>
+                              <span className="text-[10px] font-bold text-text-main">{aw.name} {aw.duration ? `(${aw.duration}m)` : ''}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
